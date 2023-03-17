@@ -6,3 +6,28 @@ html, body {
 canvas {
   display: block;
 }
+
+/* prevent scrolling on touch devices */
+body {
+  overflow: hidden;
+  touch-action: none;
+}
+
+button {
+  background: #555;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  color: #ddd;
+  cursor: pointer;
+  display: inline-block;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1.5;
+  margin: 0;
+  padding: 6px 12px;
+  text-align: center;
+  text-decoration: none;
+  vertical-align: middle;
+  white-space: nowrap;
+}
