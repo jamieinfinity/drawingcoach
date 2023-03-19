@@ -132,12 +132,12 @@ class CurveSimpleLine {
         let decimals = 1;
         let locationScore = round(10*Math.exp(-distance * distance / (canvas.width * canvas.width / 300)), decimals);
         let angleScore = round(10*Math.exp(-angleDifference * angleDifference / (10 * 10)), decimals);
-        let lengthScore = round(10*Math.exp(-lengthDifference * lengthDifference / (parameters1.length * parameters1.length / 30)), decimals);
-        let smoothnessScore = round(10*Math.exp(-curve.rmse / (parameters1.length / 30)), decimals);
-        let overallScore = round((locationScore 
-                                + angleScore 
-                                + lengthScore 
-                                + smoothnessScore) / 4, decimals, decimals);
+        let lengthScore = round(10*Math.exp(-lengthDifference * lengthDifference / (parameters1.length * parameters1.length / 40)), decimals);
+        let smoothnessScore = round(10*Math.exp(-curve.rmse / (parameters1.length / 40)), decimals);
+        let overallScore = round((locationScore * scoreWeights.location
+                                + lengthScore * scoreWeights.length
+                                + angleScore * scoreWeights.angle
+                                + smoothnessScore * scoreWeights.smoothness) / 4, decimals, decimals);
         return { overall: overallScore, location: locationScore, angle: angleScore, length: lengthScore, smoothness: smoothnessScore };
     }
 

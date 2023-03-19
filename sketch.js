@@ -28,9 +28,11 @@ let showReference = false;
 let fitToDrawing;
 let showFitToDrawing = false;
 let drawingPoints = [];
+let showGridLines = true;
 
 
 function setup() {
+  colorMode(RGB, 255, 255, 255, 255);
   canvasWidth = windowWidth / 2;
   canvasHeight = windowWidth / 2;
   createCanvas(canvasWidth * 2, canvasHeight);
@@ -43,9 +45,26 @@ function setup() {
   nextButton.mousePressed(nextButtonPressed);
   nextButton.position(canvasWidth + 10, canvasHeight + 10);
 
+  // add toggle to show grid lines
+  let label = createElement(
+    'label',
+    `<input id="toggle" type="checkbox" />
+     <span class="slider round"></span>`
+  );
+  label.addClass('switch');
+  checkbox = select('#toggle');
+  checkbox.checked(showGridLines);
+  label.position(canvasWidth + 110, canvasHeight + 13);
+  checkbox.changed(toggleGridLines);
+
   reference = new CurveSimpleLine();
   reference.updateWithRandomCurve(canvasL);
   fitToDrawing = new CurveSimpleLine();
+}
+
+function toggleGridLines() {
+  showGridLines = checkbox.checked();
+  draw();
 }
 
 function nextButtonPressed() {
@@ -70,12 +89,16 @@ function windowResized() {
 
 function touchStarted(event) {
   // console.log(event);
-  showReference = false;
-  showFitToDrawing = false;
 
-  // Start a new line
-  drawingPoints = [];
-  drawingPoints.push(createVector(mouseX - canvasWidth, mouseY));
+  // only do something if mouse is within the canvas
+  if (mouseY < canvasHeight) {
+    showReference = false;
+    showFitToDrawing = false;
+
+    // Start a new line
+    drawingPoints = [];
+    drawingPoints.push(createVector(mouseX - canvasWidth, mouseY));
+  }
 }
 
 function mousePressed() {
@@ -92,8 +115,11 @@ function mousePressed() {
 }
 
 function mouseDragged() {
-  // Add a new point to the line
-  drawingPoints.push(createVector(mouseX - canvasWidth, mouseY));
+  // only do something if mouse is within the canvas
+  if (mouseY < canvasHeight) {  
+    // Add a new point to the line
+    drawingPoints.push(createVector(mouseX - canvasWidth, mouseY));
+  }
 }
 
 function mouseReleased() {
@@ -158,8 +184,30 @@ function drawCanvasBorder(canvas) {
   canvas.rect(canvaseBorderOffset, canvaseBorderOffset, canvasWidth - 2 * canvaseBorderOffset, canvasHeight - 2 * canvaseBorderOffset);
 }
 
+function drawGridLines(canvas) {
+  if (!showGridLines) {
+    return;
+  }
+  // light blue lines
+  let c = color("#2196F3");
+  c.setAlpha(40);
+  canvas.stroke(c);
+  canvas.strokeWeight(3);
+  for (let i = 1; i < 3; i++) {
+    canvas.line(0, canvasHeight / 3 * i, canvasWidth, canvasHeight / 3 * i);
+    canvas.line(canvasWidth / 3 * i, 0, canvasWidth / 3 * i, canvasHeight);
+  }
+  canvas.strokeWeight(1);
+  for (let i = 1; i < 6; i++) {
+    canvas.line(0, canvasHeight / 6 * i, canvasWidth, canvasHeight / 6 * i);
+    canvas.line(canvasWidth / 6 * i, 0, canvasWidth / 6 * i, canvasHeight);
+  }
+}
+
 function drawStudentCanvas(canvas, ref, fit) {
   canvas.background(255);
+
+  drawGridLines(canvas);
 
   // Draw the fit line
   // if (showFitToDrawing) {
@@ -193,6 +241,10 @@ function drawStudentCanvas(canvas, ref, fit) {
 }
 
 function drawReferenceCanvas(canvas, ref) {
+  canvas.background(255);
+
+  drawGridLines(canvas);
+
   ref.draw(canvas, "normal");
 
   drawCanvasBorder(canvas);
