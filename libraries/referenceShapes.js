@@ -134,10 +134,11 @@ class CurveSimpleLine {
         let angleScore = round(10*Math.exp(-angleDifference * angleDifference / (10 * 10)), decimals);
         let lengthScore = round(10*Math.exp(-lengthDifference * lengthDifference / (parameters1.length * parameters1.length / 40)), decimals);
         let smoothnessScore = round(10*Math.exp(-curve.rmse / (parameters1.length / 40)), decimals);
+        let sumOfWeights = scoreWeights.location + scoreWeights.length + scoreWeights.angle + scoreWeights.smoothness;
         let overallScore = round((locationScore * scoreWeights.location
                                 + lengthScore * scoreWeights.length
                                 + angleScore * scoreWeights.angle
-                                + smoothnessScore * scoreWeights.smoothness) / 4, decimals, decimals);
+                                + smoothnessScore * scoreWeights.smoothness) / sumOfWeights, decimals, decimals);
         return { overall: overallScore, location: locationScore, angle: angleScore, length: lengthScore, smoothness: smoothnessScore };
     }
 
