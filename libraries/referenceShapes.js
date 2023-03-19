@@ -129,11 +129,10 @@ class CurveSimpleLine {
         let lengthDifference = abs(parameters1.length - parameters2.length);
         // console.log("distance: " + distance + ", angleDifference: " + angleDifference + ", lengthDifference: " + lengthDifference, ", rmse: " + curve.rmse);
 
-        // find a similarity scores, which is a number between 0 and 1
         let decimals = 1;
         let locationScore = round(10*Math.exp(-distance * distance / (canvas.width * canvas.width / 300)), decimals);
         let angleScore = round(10*Math.exp(-angleDifference * angleDifference / (10 * 10)), decimals);
-        let lengthScore = round(10*Math.exp(-lengthDifference * lengthDifference / (parameters1.length * parameters1.length / 100)), decimals);
+        let lengthScore = round(10*Math.exp(-lengthDifference * lengthDifference / (parameters1.length * parameters1.length / 30)), decimals);
         let smoothnessScore = round(10*Math.exp(-curve.rmse / (parameters1.length / 30)), decimals);
         let overallScore = round((locationScore 
                                 + angleScore 
