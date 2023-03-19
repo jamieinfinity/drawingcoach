@@ -41,7 +41,7 @@ function setup() {
   nextButton = createButton('Next');
   nextButton.size(80, 40);
   nextButton.mousePressed(nextButtonPressed);
-  nextButton.position(canvasWidth - 90, canvasHeight + 10);
+  nextButton.position(canvasWidth + 10, canvasHeight + 10);
 
   reference = new CurveSimpleLine();
   reference.updateWithRandomCurve(canvasL);
@@ -99,14 +99,20 @@ function mouseDragged() {
 function mouseReleased() {
   // only do something if mouse is within the canvas
   if (mouseY < canvasHeight) {
-    showReference = true;
-    showFitToDrawing = true;
 
     fitToDrawing.updateWithFitToDrawing(drawingPoints);
 
-    // compare the fit to the reference
-    let similarityScores = reference.getSimilarityScores(fitToDrawing, canvasL);
+    if (drawingPoints.length <= 3 || isNaN(fitToDrawing.getCurveParameters().length)) {
+      drawingPoints = [];
+      canvasR.reset();
+      canvasR.background(255);
+      resetScoreDiv();
+      return;
+    }
 
+    showReference = true;
+    showFitToDrawing = false;
+    let similarityScores = reference.getSimilarityScores(fitToDrawing, canvasL);
     displayScores(similarityScores);
   }
 }
@@ -121,15 +127,15 @@ function resetScoreDiv() {
 function displayScores(scores) {
   resetScoreDiv();
   scoreDiv = createDiv();
-  scoreDiv.position(windowWidth/2 + 10, canvasHeight + 15);
+  scoreDiv.position(10, canvasHeight + 20);
   scoreDiv.id("scoreDiv");
   scoreDiv.style("display", "flex");
   scoreDiv.style("flex-direction", "row");
   scoreDiv.style("column-gap", ".1em");
   scoreDiv.style("font-size", "1em");
   scoreDiv.style("justify-content", "space-between");
-  scoreDiv.style("width",  windowWidth/2 - 20 + "px");
-  for(let key of similarityScoreKeys) {
+  scoreDiv.style("width", windowWidth / 2 - 20 + "px");
+  for (let key of similarityScoreKeys) {
     // display the label and score in their own divs so they can be styled separately
     let div = createDiv(similarityScoreLabels[key]);
     div.style("color", "#888");
@@ -155,11 +161,6 @@ function drawCanvasBorder(canvas) {
 function drawStudentCanvas(canvas, ref, fit) {
   canvas.background(255);
 
-  // Draw the reference line
-  if (showReference) {
-    ref.draw(canvas, "reference");
-  }
-
   // Draw the fit line
   // if (showFitToDrawing) {
   //   fit.draw(canvas, "fit");
@@ -180,6 +181,11 @@ function drawStudentCanvas(canvas, ref, fit) {
   canvas.fill(200);
   canvas.noStroke();
   canvas.ellipse(mouseX - canvasWidth, mouseY, 8, 8);
+
+  // Draw the reference line
+  if (showReference) {
+    ref.draw(canvas, "reference");
+  }
 
   drawCanvasBorder(canvas);
 

@@ -6,12 +6,14 @@ const styleParameters = {
         lineThickness: 4,
     },
     reference: {
-        lineColor: 200,
-        lineOpacity: 255,
+        // make line orange
+        lineColor: "#FF9F1C",
+        lineOpacity: 200,
         lineThickness: 4,
     },
     fit: {
-        lineColor: "#e71d36",
+        // make line green
+        lineColor: "#2ec4b6",
         lineOpacity: 255,
         lineThickness: 4,
     }
@@ -125,7 +127,7 @@ class CurveSimpleLine {
         let distance = dist(parameters1.centerPosition.x, parameters1.centerPosition.y, parameters2.centerPosition.x, parameters2.centerPosition.y);
         let angleDifference = abs(parameters1.angle - parameters2.angle);
         let lengthDifference = abs(parameters1.length - parameters2.length);
-        console.log("distance: " + distance + ", angleDifference: " + angleDifference + ", lengthDifference: " + lengthDifference, ", rmse: " + curve.rmse);
+        // console.log("distance: " + distance + ", angleDifference: " + angleDifference + ", lengthDifference: " + lengthDifference, ", rmse: " + curve.rmse);
 
         // find a similarity scores, which is a number between 0 and 1
         let decimals = 1;
