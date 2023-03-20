@@ -1,5 +1,6 @@
 const canvaseBorderWidth = 2;
 const canvaseBorderOffset = 2;
+const headerHeight = 60;
 
 const similarityScoreKeys = [
   "location",
@@ -16,6 +17,7 @@ const similarityScoreLabels = {
   overall: "Overall"
 };
 
+let rootCanvas;
 let canvasWidth;
 let canvasHeight;
 let canvasL;
@@ -32,10 +34,24 @@ let showGridLines = true;
 
 
 function setup() {
+// create a header above the canvas
+  let header = createDiv();
+  header.addClass('header');
+  header.position(0, 0);
+  // assign styles for height and line-height based on headerHeight variable
+  header.style('height', headerHeight + 'px');
+  header.style('line-height', headerHeight + 'px');
+  let title = createDiv();
+  title.addClass('title');
+  title.parent(header);
+  let titleH1 = createElement('h1', 'Drawing Dojo');
+  titleH1.parent(title);
+  
   colorMode(RGB, 255, 255, 255, 255);
   canvasWidth = windowWidth / 2;
   canvasHeight = windowWidth / 2;
-  createCanvas(canvasWidth * 2, canvasHeight);
+  rootCanvas = createCanvas(canvasWidth * 2, canvasHeight);
+  rootCanvas.position(0, headerHeight);
 
   canvasL = createGraphics(canvasWidth, canvasHeight);
   canvasR = createGraphics(canvasWidth, canvasHeight);
@@ -43,7 +59,7 @@ function setup() {
   nextButton = createButton('Next');
   nextButton.size(80, 40);
   nextButton.mousePressed(nextButtonPressed);
-  nextButton.position(canvasWidth + 10, canvasHeight + 10);
+  nextButton.position(canvasWidth + 10, canvasHeight + headerHeight + 10);
 
   // add toggle to show grid lines
   let label = createElement(
@@ -54,7 +70,7 @@ function setup() {
   label.addClass('switch');
   checkbox = select('#toggle');
   checkbox.checked(showGridLines);
-  label.position(canvasWidth + 110, canvasHeight + 13);
+  label.position(canvasWidth + 110, canvasHeight + headerHeight + 13);
   checkbox.changed(toggleGridLines);
 
   reference = new CurveSimpleLine();
@@ -153,7 +169,7 @@ function resetScoreDiv() {
 function displayScores(scores) {
   resetScoreDiv();
   scoreDiv = createDiv();
-  scoreDiv.position(10, canvasHeight + 20);
+  scoreDiv.position(10, canvasHeight + headerHeight + 20);
   scoreDiv.id("scoreDiv");
   scoreDiv.style("display", "flex");
   scoreDiv.style("flex-direction", "row");

@@ -7,7 +7,7 @@ const styleParameters = {
     },
     reference: {
         // make line orange
-        lineColor: "#FF9F1C",
+        lineColor: "#ffc300",
         lineOpacity: 200,
         lineThickness: 4,
     },
@@ -15,7 +15,7 @@ const styleParameters = {
         // make line green
         lineColor: "#2ec4b6",
         lineOpacity: 255,
-        lineThickness: 4,
+        lineThickness: 5,
     }
 }
 const scoreWeights = {
