@@ -31,10 +31,13 @@ let fitToDrawing;
 let showFitToDrawing = false;
 let drawingPoints = [];
 let showGridLines = true;
+let showBlobs = true;
+
+let blobs = [];
 
 
 function setup() {
-// create a header above the canvas
+  // create a header above the canvas
   let header = createDiv();
   header.addClass('header');
   header.position(0, 0);
@@ -46,7 +49,7 @@ function setup() {
   title.parent(header);
   let titleH1 = createElement('h1', 'Drawing Dojo');
   titleH1.parent(title);
-  
+
   colorMode(RGB, 255, 255, 255, 255);
   canvasWidth = windowWidth / 2;
   canvasHeight = windowWidth / 2;
@@ -70,12 +73,39 @@ function setup() {
   label.addClass('switch');
   checkbox = select('#toggle');
   checkbox.checked(showGridLines);
-  label.position(canvasWidth + 110, canvasHeight + headerHeight + 13);
+  label.position(canvasWidth + 115, canvasHeight + headerHeight + 13);
   checkbox.changed(toggleGridLines);
 
   reference = new CurveSimpleLine();
   reference.updateWithRandomCurve(canvasL);
   fitToDrawing = new CurveSimpleLine();
+
+  // create a bunch of blobs to draw on the canvas
+  for (let i = 0; i < 9; i++) {
+    blobs.push(new BlobShape(canvasWidth, 0.01, i + 1));
+  }
+  // randomly remove some blobs
+  for (let i = 0; i < 5; i++) {
+    let index = floor(random(blobs.length));
+    blobs.splice(index, 1);
+  }
+
+  // add toggle to show blobs
+  let label2 = createElement(
+    'label',
+    `<input id="toggle2" type="checkbox" />
+      <span class="slider round"></span>`
+  );
+  label2.addClass('switch');
+  checkbox2 = select('#toggle2');
+  checkbox2.checked(showBlobs);
+  label2.position(canvasWidth + 195, canvasHeight + headerHeight + 13);
+  checkbox2.changed(toggleBlobs);
+}
+
+function toggleBlobs() {
+  showBlobs = checkbox2.checked();
+  draw();
 }
 
 function toggleGridLines() {
@@ -132,7 +162,7 @@ function mousePressed() {
 
 function mouseDragged() {
   // only do something if mouse is within the canvas
-  if (mouseY < canvasHeight) {  
+  if (mouseY < canvasHeight) {
     // Add a new point to the line
     drawingPoints.push(createVector(mouseX - canvasWidth, mouseY));
   }
@@ -230,6 +260,12 @@ function drawStudentCanvas(canvas, ref, fit) {
   //   fit.draw(canvas, "fit");
   // }
 
+  if (showBlobs) {
+    for (let i = 0; i < blobs.length; i++) {
+      blobs[i].draw(canvas);
+    }
+  }
+
   // Draw the student's drawing
   canvas.noFill();
   // canvas.stroke("#2ec4b6");
@@ -260,6 +296,12 @@ function drawReferenceCanvas(canvas, ref) {
   canvas.background(255);
 
   drawGridLines(canvas);
+
+  if (showBlobs) {
+    for (let i = 0; i < blobs.length; i++) {
+      blobs[i].draw(canvas);
+    }
+  }
 
   ref.draw(canvas, "normal");
 

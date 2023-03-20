@@ -52,18 +52,18 @@ function fitLineToPoints(points) {
     covYY /= n;
 
     let diff = covYY - covXX;
-    let beta1 = (diff + sqrt(diff*diff + 4*covXY*covXY)) / (2 * covXY);
+    let beta1 = (diff + sqrt(diff * diff + 4 * covXY * covXY)) / (2 * covXY);
     let beta0 = meanY - beta1 * meanX;
 
     function lineFunctin(p) {
         let x = p.x;
         let y = p.y;
-        let xprime = x + beta1*(y - beta0 - beta1*x)/(1 + beta1*beta1);
-        let yprime = beta0 + beta1*xprime;
-        return {x: xprime, y: yprime};
+        let xprime = x + beta1 * (y - beta0 - beta1 * x) / (1 + beta1 * beta1);
+        let yprime = beta0 + beta1 * xprime;
+        return { x: xprime, y: yprime };
     }
-    let pstart = lineFunctin({x:points[0].x, y:points[0].y});
-    let pend = lineFunctin({x:points[n-1].x, y:points[n-1].y});
+    let pstart = lineFunctin({ x: points[0].x, y: points[0].y });
+    let pend = lineFunctin({ x: points[n - 1].x, y: points[n - 1].y });
 
     // find the RMSE by using lineFunction to find the distance from each point to the line
     let rmse = 0;
@@ -74,7 +74,7 @@ function fitLineToPoints(points) {
     }
     rmse /= n;
 
-    return { line: [pstart, pend], rmse:rmse }
+    return { line: [pstart, pend], rmse: rmse }
 }
 
 class CurveSimpleLine {
@@ -130,16 +130,92 @@ class CurveSimpleLine {
         // console.log("distance: " + distance + ", angleDifference: " + angleDifference + ", lengthDifference: " + lengthDifference, ", rmse: " + curve.rmse);
 
         let decimals = 1;
-        let locationScore = round(10*Math.exp(-distance * distance / (canvas.width * canvas.width / 300)), decimals);
-        let angleScore = round(10*Math.exp(-angleDifference * angleDifference / (10 * 10)), decimals);
-        let lengthScore = round(10*Math.exp(-lengthDifference * lengthDifference / (parameters1.length * parameters1.length / 40)), decimals);
-        let smoothnessScore = round(10*Math.exp(-curve.rmse / (parameters1.length / 40)), decimals);
+        let locationScore = round(10 * Math.exp(-distance * distance / (canvas.width * canvas.width / 300)), decimals);
+        let angleScore = round(10 * Math.exp(-angleDifference * angleDifference / (10 * 10)), decimals);
+        let lengthScore = round(10 * Math.exp(-lengthDifference * lengthDifference / (parameters1.length * parameters1.length / 40)), decimals);
+        let smoothnessScore = round(10 * Math.exp(-curve.rmse / (parameters1.length / 40)), decimals);
         let sumOfWeights = scoreWeights.location + scoreWeights.length + scoreWeights.angle + scoreWeights.smoothness;
         let overallScore = round((locationScore * scoreWeights.location
-                                + lengthScore * scoreWeights.length
-                                + angleScore * scoreWeights.angle
-                                + smoothnessScore * scoreWeights.smoothness) / sumOfWeights, decimals, decimals);
+            + lengthScore * scoreWeights.length
+            + angleScore * scoreWeights.angle
+            + smoothnessScore * scoreWeights.smoothness) / sumOfWeights, decimals, decimals);
         return { overall: overallScore, location: locationScore, angle: angleScore, length: lengthScore, smoothness: smoothnessScore };
     }
+}
 
+class BlobShape {
+    constructor(canvasSize, noiseScale, canvasSector) {
+        this.noiseScale = noiseScale;
+        this.canvasSize = canvasSize;
+        this.vertices = this.generateBlob(canvasSize, noiseScale, canvasSector);
+    }
+    // canvasSector is an integer between 1 and 9 representing the 3x3 grid of the canvas
+    generateBlob(canvasSize, noiseScale, canvasSector) {
+        // set random values for numVertices, radius, x, y
+        const numVertices = 10;
+        const radius = random(canvasSize / 10., canvasSize / 5.)
+        const sectorSize = canvasSize / 3;
+        const sectorX = (canvasSector - 1) % 3;
+        const sectorY = Math.floor((canvasSector - 1) / 3);
+        // assign random location within the canvas sector
+        const x = random(radius/2, sectorSize - radius/2) + sectorX*sectorSize;
+        const y = random(radius/2, sectorSize - radius/2) + sectorY*sectorSize;
+
+        // Generate a set of random angles to use as the base for the vertices
+        const angles = [];
+        for (let i = 0; i < numVertices; i++) {
+            angles.push(Math.random() * Math.PI * 2);
+        }
+
+        // Generate a set of noise values to use as the offsets from the base vertices
+        const offsets = [];
+        for (let i = 0; i < numVertices; i++) {
+            const nx = x + radius * Math.cos(angles[i]);
+            const ny = y + radius * Math.sin(angles[i]);
+            offsets.push(noise(nx * noiseScale, ny * noiseScale));
+        }
+
+        // Create the vertices of the blob
+        const vertices = [];
+        for (let i = 0; i < numVertices; i++) {
+            const angle = angles[i];
+            const offset = offsets[i];
+            const vx = x + radius * Math.cos(angle) * offset;
+            const vy = y + radius * Math.sin(angle) * offset;
+            vertices.push(createVector(vx, vy));
+        }
+
+        vertices.sort((a, b) => Math.atan2(b.y - y, b.x - x) - Math.atan2(a.y - y, a.x - x));
+
+        // Apply the Chaikin algorithm to smooth the boundary
+        let numIterations = 10;
+        for (let i = 0; i < numIterations; i++) {
+            const newVertices = [];
+            const n = vertices.length;
+
+            for (let j = 0; j < n; j++) {
+                const p0 = vertices[j];
+                const p1 = vertices[(j + 1) % n];
+
+                const q0 = p5.Vector.lerp(p0, p1, 1 / 4);
+                const q1 = p5.Vector.lerp(p0, p1, 3 / 4);
+
+                newVertices.push(q0, q1);
+            }
+            vertices.splice(0, vertices.length, ...newVertices);
+        }
+        vertices.sort((a, b) => Math.atan2(b.y - y, b.x - x) - Math.atan2(a.y - y, a.x - x));
+
+        return vertices;
+    }
+    draw(canvas) {
+        canvas.stroke(180);
+        canvas.strokeWeight(1);
+        canvas.fill(235);
+        canvas.beginShape();
+        for (let i = 0; i < this.vertices.length; i++) {
+            canvas.curveVertex(this.vertices[i].x, this.vertices[i].y);
+        }
+        canvas.endShape(CLOSE);
+    }
 }
