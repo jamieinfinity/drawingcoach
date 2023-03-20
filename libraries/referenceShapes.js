@@ -3,13 +3,13 @@ const styleParameters = {
     normal: {
         lineColor: 0,
         lineOpacity: 255,
-        lineThickness: 4,
+        lineThickness: 5,
     },
     reference: {
         // make line orange
         lineColor: "#ffc300",
         lineOpacity: 200,
-        lineThickness: 4,
+        lineThickness: 5,
     },
     fit: {
         // make line green
