@@ -35,6 +35,47 @@ let showBlobs = true;
 
 let blobs = [];
 
+function createBlobs() {
+  let noiseScale = 200;
+  let numBaseVertices = 14;
+  let blobs = [];
+  // create a bunch of blobs to draw on the canvas
+  for (let i = 0; i < 9; i++) {
+    blobs.push(new BlobShape(i+1, canvasWidth, numBaseVertices, noiseScale));
+  }
+  // randomly remove some blobs
+  for (let i = 0; i < 5; i++) {
+    let index = floor(random(blobs.length));
+    blobs.splice(index, 1);
+  }
+  // check if any canvas sector rows or columns are empty
+  let unOccupiedRows = [0,1,2];
+  let unOccupiedColumns = [0,1,2];
+  for (let i = 0; i < blobs.length; i++) {
+    let row = Math.floor((blobs[i].canvasSector - 1) / 3);
+    let column = (blobs[i].canvasSector - 1) % 3;
+    if (unOccupiedRows.includes(row)) {
+      unOccupiedRows.splice(unOccupiedRows.indexOf(row), 1);
+    }
+    if (unOccupiedColumns.includes(column)) {
+      unOccupiedColumns.splice(unOccupiedColumns.indexOf(column), 1);
+    }
+  }
+  // if any rows or columns are empty, add a blob to fill it
+  if (unOccupiedRows.length > 0) {
+    let row = unOccupiedRows[0];
+    let column = floor(random(3));
+    let canvasSector = row * 3 + column + 1;
+    blobs.push(new BlobShape(canvasSector, canvasWidth, numBaseVertices, noiseScale));
+  }
+  if (unOccupiedColumns.length > 0) {
+    let column = unOccupiedColumns[0];
+    let row = floor(random(3));
+    let canvasSector = row * 3 + column + 1;
+    blobs.push(new BlobShape(canvasSector, canvasWidth, numBaseVertices, noiseScale));
+  }
+  return blobs;
+}
 
 function setup() {
   // create a header above the canvas
@@ -80,15 +121,7 @@ function setup() {
   reference.updateWithRandomCurve(canvasL);
   fitToDrawing = new CurveSimpleLine();
 
-  // create a bunch of blobs to draw on the canvas
-  for (let i = 0; i < 9; i++) {
-    blobs.push(new BlobShape(canvasWidth, 0.01, i + 1));
-  }
-  // randomly remove some blobs
-  for (let i = 0; i < 5; i++) {
-    let index = floor(random(blobs.length));
-    blobs.splice(index, 1);
-  }
+  blobs = createBlobs();
 
   // add toggle to show blobs
   let label2 = createElement(
