@@ -253,7 +253,7 @@ function resetScoreDiv() {
 function displayScores(scores) {
   resetScoreDiv();
   scoreDiv = createDiv();
-  scoreDiv.position(10, canvasHeight + headerHeight + 20);
+  scoreDiv.position(10, canvasHeight + canvasOffset + 20);
   scoreDiv.id("scoreDiv");
   scoreDiv.style("display", "flex");
   scoreDiv.style("flex-direction", "row");
