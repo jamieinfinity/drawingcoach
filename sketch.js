@@ -1,6 +1,8 @@
 const canvaseBorderWidth = 2;
 const canvaseBorderOffset = 2;
 const headerHeight = 60;
+const canvasLabelHeight = 40;
+const canvasOffset = headerHeight + canvasLabelHeight;
 
 const similarityScoreKeys = [
   "location",
@@ -91,11 +93,30 @@ function setup() {
   let titleH1 = createElement('h1', 'Drawing Dojo');
   titleH1.parent(title);
 
+  // create a div to hold canvas labels
+  // then within that create two divs, one for each canvas label
+  // within each of those an h2 for the label text
+  let canvasLabels = createDiv();
+  canvasLabels.addClass('canvas-labels');
+  canvasLabels.position(0, headerHeight);
+  canvasLabels.style('height', canvasLabelHeight + 'px');
+  canvasLabels.style('line-height', canvasLabelHeight + 'px');
+  let canvasLabelL = createDiv();
+  canvasLabelL.addClass('canvas-label');
+  canvasLabelL.parent(canvasLabels);
+  let canvasLabelLH2 = createElement('h2', 'REFERENCE');
+  canvasLabelLH2.parent(canvasLabelL);
+  let canvasLabelR = createDiv();
+  canvasLabelR.addClass('canvas-label');
+  canvasLabelR.parent(canvasLabels);
+  let canvasLabelRH2 = createElement('h2', 'DRAWING');
+  canvasLabelRH2.parent(canvasLabelR);
+
   colorMode(RGB, 255, 255, 255, 255);
   canvasWidth = windowWidth / 2;
   canvasHeight = windowWidth / 2;
   rootCanvas = createCanvas(canvasWidth * 2, canvasHeight);
-  rootCanvas.position(0, headerHeight);
+  rootCanvas.position(0, canvasOffset);
 
   canvasL = createGraphics(canvasWidth, canvasHeight);
   canvasR = createGraphics(canvasWidth, canvasHeight);
@@ -103,7 +124,7 @@ function setup() {
   nextButton = createButton('Next');
   nextButton.size(80, 40);
   nextButton.mousePressed(nextButtonPressed);
-  nextButton.position(canvasWidth + 10, canvasHeight + headerHeight + 10);
+  nextButton.position(canvasWidth + 10, canvasHeight + canvasOffset + 10);
 
   // add toggle to show grid lines
   let label = createElement(
@@ -114,7 +135,7 @@ function setup() {
   label.addClass('switch');
   checkbox = select('#toggle');
   checkbox.checked(showGridLines);
-  label.position(canvasWidth + 115, canvasHeight + headerHeight + 13);
+  label.position(canvasWidth + 115, canvasHeight + canvasOffset + 13);
   checkbox.changed(toggleGridLines);
 
   reference = new CurveSimpleLine();
@@ -132,7 +153,7 @@ function setup() {
   label2.addClass('switch');
   checkbox2 = select('#toggle2');
   checkbox2.checked(showBlobs);
-  label2.position(canvasWidth + 195, canvasHeight + headerHeight + 13);
+  label2.position(canvasWidth + 195, canvasHeight + canvasOffset + 13);
   checkbox2.changed(toggleBlobs);
 }
 

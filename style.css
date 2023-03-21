@@ -1,3 +1,9 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -30,6 +36,29 @@ body {
 .header h1 {
   margin: 0;
   padding: 0;
+}
+
+.canvas-labels {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.canvas-label {
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  flex: 1;
+  width: 50%;
+  text-align: center;
+  vertical-align: middle;
+  padding: 3px;
+}
+
+.canvas-label h2 {
+  margin: 0;
+  color: #555;
+  font-size: 20px;
 }
 
 button {
