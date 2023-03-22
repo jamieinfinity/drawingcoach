@@ -108,7 +108,6 @@ function setup() {
   }  
   canvasWidth = size;
   canvasHeight = size;
-  console.log(canvasWidth, canvasHeight);
   rootCanvas = createCanvas(canvasWidth * 2, canvasHeight);
   rootCanvas.position(0, canvasOffset);
 
