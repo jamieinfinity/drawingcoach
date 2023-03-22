@@ -99,6 +99,27 @@ function resetCanvas() {
 }
 
 function setup() {
+  colorMode(RGB, 255, 255, 255, 255);
+  let size;
+  if(windowWidth/2 < windowHeight - headerHeight - canvasLabelHeight - 50) {
+    size = windowWidth / 2;
+  } else {
+    size = windowHeight - headerHeight - canvasLabelHeight - 50;
+  }  
+  canvasWidth = size;
+  canvasHeight = size;
+  console.log(canvasWidth, canvasHeight);
+  rootCanvas = createCanvas(canvasWidth * 2, canvasHeight);
+  rootCanvas.position(0, canvasOffset);
+
+  canvasL = createGraphics(canvasWidth, canvasHeight);
+  canvasR = createGraphics(canvasWidth, canvasHeight);
+
+  reference = createNewShape(referenceShapeType, canvasL);
+  fitToDrawing = createNewShape(referenceShapeType, canvasL);
+
+  blobs = createBlobs();
+
   // create a header above the canvas
   let header = createDiv();
   header.addClass('header');
@@ -130,20 +151,6 @@ function setup() {
   canvasLabelR.parent(canvasLabels);
   let canvasLabelRH2 = createElement('h2', 'DRAWING');
   canvasLabelRH2.parent(canvasLabelR);
-
-  colorMode(RGB, 255, 255, 255, 255);
-  canvasWidth = windowWidth / 2;
-  canvasHeight = windowWidth / 2;
-  rootCanvas = createCanvas(canvasWidth * 2, canvasHeight);
-  rootCanvas.position(0, canvasOffset);
-
-  canvasL = createGraphics(canvasWidth, canvasHeight);
-  canvasR = createGraphics(canvasWidth, canvasHeight);
-
-  reference = createNewShape(referenceShapeType, canvasL);
-  fitToDrawing = createNewShape(referenceShapeType, canvasL);
-
-  blobs = createBlobs();
 
   nextButton = createButton('Next');
   nextButton.size(100, 40);
@@ -220,9 +227,15 @@ function nextButtonPressed() {
 }
 
 function windowResized() {
-  canvasWidth = windowWidth / 2;
-  canvasHeight = windowWidth / 2;
-  resizeCanvas(windowWidth, canvasHeight);
+  let size;
+  if(windowWidth/2 < windowHeight - headerHeight - canvasLabelHeight - 50) {
+    size = windowWidth / 2;
+  } else {
+    size = windowHeight;
+  }  
+  canvasWidth = size;
+  canvasHeight = size; 
+  resizeCanvas(2*size, size);
 }
 
 function touchStarted(event) {
