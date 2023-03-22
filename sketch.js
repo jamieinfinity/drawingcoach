@@ -371,10 +371,10 @@ function drawStudentCanvas(canvas, ref, fit) {
     }
   }
 
-  // Draw the fit line
-  if (showFitToDrawing) {
-    fit.draw(canvas, "fit");
-  }
+  // // Draw the fit line
+  // if (showFitToDrawing) {
+  //   fit.draw(canvas, "fit");
+  // }
 
   // Draw the student's drawing
   canvas.noFill();
