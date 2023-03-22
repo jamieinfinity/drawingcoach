@@ -211,11 +211,22 @@ function getSimilarityScores(refShape, fitShape, canvas) {
     let fitParams = fitShape.getShapeParameters();
     let distance = dist(refParams.centerPosition.x, refParams.centerPosition.y, fitParams.centerPosition.x, fitParams.centerPosition.y);
     let orientationDifference = abs(refParams.orientation - fitParams.orientation);
+    // console.log("ref angle: " + refParams.orientation + ", fit angle: " + fitParams.orientation + ", diff: " + orientationDifference);
     let sizeDifference = abs(refParams.size - fitParams.size);
 
     let decimals = 1;
     let locationScore = round(10 * Math.exp(-distance * distance / (canvas.width * canvas.width / sss.location )), decimals);
     let orientationScore = round(10 * Math.exp(-orientationDifference * orientationDifference / sss.orientation), decimals);
+    // if shape is an ellipse, adjust orientation score to account for case of circle
+    if (shapeType == "ShapeEllipse") {
+        let aspectRatioRef = refShape.width / refShape.height;
+        let aspectRatioFit = fitShape.width / fitShape.height;
+        let aspectRatioDifference = abs(aspectRatioRef - aspectRatioFit);
+        let aspectRatioScore = round(10 * Math.exp(-aspectRatioDifference * aspectRatioDifference / 0.1), decimals);
+        let mixingFactor = 1 - aspectRatioRef; // 0 for circle, 1 for extreme ellipse
+        // console.log("aspect ratio ref: " + aspectRatioRef + ", fit: " + aspectRatioFit + ", diff: " + aspectRatioDifference + ", score: " + aspectRatioScore);
+        orientationScore = round((1-mixingFactor) * aspectRatioScore + mixingFactor * orientationScore, decimals);
+    }
     let sizeScore = round(10 * Math.exp(-sizeDifference * sizeDifference / (refParams.size * refParams.size / sss.size)), decimals);
     let fidelity = round(10*fitShape.fidelity, decimals);
     let sumOfWeights = similarityScoreWeights.location + similarityScoreWeights.size + similarityScoreWeights.orientation + similarityScoreWeights.fidelity;
@@ -312,18 +323,24 @@ function solveEigenvalueProblem(matrix) {
 }
 
 function bestFitEllipse(points) {
-    const { normalizedPoints, centroid } = normalizePoints(points);
-    const matrix = covarianceMatrix(normalizedPoints);
-    const { majorEigenvalue, minorEigenvalue, majorEigenvector, minorEigenvector } = solveEigenvalueProblem(matrix);
+    let { normalizedPoints, centroid } = normalizePoints(points);
+    let matrix = covarianceMatrix(normalizedPoints);
+    let { majorEigenvalue, minorEigenvalue, majorEigenvector, minorEigenvector } = solveEigenvalueProblem(matrix);
 
-    const a = Math.sqrt(2 * majorEigenvalue);
-    const b = Math.sqrt(2 * minorEigenvalue);
-    const angle = Math.atan2(majorEigenvector.y, majorEigenvector.x);
+    let a = Math.sqrt(2 * majorEigenvalue);
+    let b = Math.sqrt(2 * minorEigenvalue);
+    let angle = Math.atan2(majorEigenvector.y, majorEigenvector.x) - PI/2.0;
+    if (angle < 0) {
+        angle += PI;
+    }
+    if (angle < 0) {
+        angle += PI;
+    }    
 
     return {
         center: centroid,
-        width: a * 2,
-        height: b * 2,
+        width: b * 2,
+        height: a * 2,
         angle: angle
     };
 }
@@ -380,14 +397,17 @@ class ShapeEllipse {
         while (!checkShapeFitsInCanvas({ x: x, y: y }, radius, canvas)) {
             x = random(xmin, xmax);
             y = random(ymin, ymax);
-            w = random(canvas.width / 10, canvas.width / 3);
-            h = random(canvas.height / 10, canvas.height / 3);
+            let d1 = random(canvas.width / 10, canvas.width / 3);
+            let d2 = random(canvas.height / 10, canvas.height / 3);
+            w = min(d1, d2);
+            h = max(d1, d2);
             radius = sqrt(w * h / 4);
         }
         this.centerPosition = { x: x, y: y };
         this.width = w;
         this.height = h;
-        this.rotationAngle = random(0, TWO_PI);
+        let angle = random(0, PI);
+        this.rotationAngle = random(0, PI);
         this.meanRadius = sqrt(this.width * this.height / 4)
     }
     updateWithFitToDrawing(drawingPoints) {

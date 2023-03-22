@@ -13,7 +13,7 @@ const similarityScoreKeys = [
 ];
 const similarityScoreLabels = {
   location: "Location",
-  size: "Length",
+  size: "Size",
   orientation: "Orientation",
   fidelity: "Fidelity",
   overall: "Overall"
@@ -371,10 +371,10 @@ function drawStudentCanvas(canvas, ref, fit) {
     }
   }
 
-  // // Draw the fit line
-  // if (showFitToDrawing) {
-  //   fit.draw(canvas, "fit");
-  // }
+  // Draw the fit line
+  if (showFitToDrawing) {
+    fit.draw(canvas, "fit");
+  }
 
   // Draw the student's drawing
   canvas.noFill();
