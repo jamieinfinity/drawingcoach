@@ -6,16 +6,16 @@ const canvasOffset = headerHeight + canvasLabelHeight;
 
 const similarityScoreKeys = [
   "location",
-  "length",
-  "angle",
-  "smoothness",
+  "size",
+  "orientation",
+  "fidelity",
   "overall"
 ];
 const similarityScoreLabels = {
   location: "Location",
-  length: "Length",
-  angle: "Orientation",
-  smoothness: "Fidelity",
+  size: "Length",
+  orientation: "Orientation",
+  fidelity: "Fidelity",
   overall: "Overall"
 };
 
@@ -272,9 +272,7 @@ function mouseReleased() {
 
     fitToDrawing.updateWithFitToDrawing(drawingPoints);
 
-    // you need to generalize getCurveParameters to work for ovals too
-    // if (drawingPoints.length <= 3 || isNaN(fitToDrawing.getCurveParameters().length)) {
-    if (drawingPoints.length <= 3) {
+    if (drawingPoints.length <= 3 || isNaN(fitToDrawing.getShapeParameters().size)) {
       drawingPoints = [];
       canvasR.reset();
       canvasR.background(255);
@@ -284,9 +282,8 @@ function mouseReleased() {
 
     showReference = true;
     showFitToDrawing = true;
-    // commenting out until this is generalized to work for ovals
-    // let similarityScores = reference.getSimilarityScores(fitToDrawing, canvasL);
-    // displayScores(similarityScores);
+    let similarityScores = reference.getSimilarityScores(fitToDrawing, canvasL);
+    displayScores(similarityScores);
   }
 }
 

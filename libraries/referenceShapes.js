@@ -18,12 +18,16 @@ const styleParameters = {
         lineThickness: 5,
     }
 }
-const scoreWeights = {
+const similarityScoreWeights = {
     location: 1.5,
-    length: 1,
-    angle: 1,
-    smoothness: 0.75
+    size: 1,
+    orientation: 1,
+    fidelity: 0.75
 }
+const similarityScoreSensitivities = {
+    "CurveSimpleLine": { "location": 300, "size": 30, "orientation": 100 },
+    "ShapeEllipse": { "location": 300, "size": 30, "orientation": 100 }
+};
 
 function fitLineToPoints(points) {
     // see https://en.wikipedia.org/wiki/Deming_regression
@@ -55,26 +59,26 @@ function fitLineToPoints(points) {
     let beta1 = (diff + sqrt(diff * diff + 4 * covXY * covXY)) / (2 * covXY);
     let beta0 = meanY - beta1 * meanX;
 
-    function lineFunctin(p) {
+    function lineFunction(p) {
         let x = p.x;
         let y = p.y;
         let xprime = x + beta1 * (y - beta0 - beta1 * x) / (1 + beta1 * beta1);
         let yprime = beta0 + beta1 * xprime;
         return { x: xprime, y: yprime };
     }
-    let pstart = lineFunctin({ x: points[0].x, y: points[0].y });
-    let pend = lineFunctin({ x: points[n - 1].x, y: points[n - 1].y });
+    let pstart = lineFunction({ x: points[0].x, y: points[0].y });
+    let pend = lineFunction({ x: points[n - 1].x, y: points[n - 1].y });
 
-    // find the RMSE by using lineFunction to find the distance from each point to the line
-    let rmse = 0;
+    let mae = 0;
     for (let i = 0; i < n; i++) {
         let p = points[i];
-        let pprime = lineFunctin(p);
-        rmse += dist(p.x, p.y, pprime.x, pprime.y);
+        let pprime = lineFunction(p);
+        mae += dist(p.x, p.y, pprime.x, pprime.y);
     }
-    rmse /= n;
+    mae /= n;
+    let fidelity =  Math.exp(-mae / (dist(pend.x, pend.y, pstart.x, pstart.y) / 40));
 
-    return { line: [pstart, pend], rmse: rmse }
+    return { line: [pstart, pend], fidelity: fidelity }
 }
 
 function chaikin(points, iterations) {
@@ -153,7 +157,7 @@ class ShapeRandomBlob {
 class CurveSimpleLine {
     constructor(points = []) {
         this.points = points;
-        this.rmse = null;
+        this.fidelity = null;
     }
     draw(canvas, style = "normal") {
         let c = color(styleParameters[style].lineColor);
@@ -177,14 +181,14 @@ class CurveSimpleLine {
             len = dist(x1, y1, x2, y2);
         }
         this.points = [{ x: x1, y: y1 }, { x: x2, y: y2 }];
-        this.rmse = null;
+        this.fidelity = null;
     }
     updateWithFitToDrawing(drawingPoints) {
-        let { line, rmse } = fitLineToPoints(drawingPoints);
+        let { line, fidelity } = fitLineToPoints(drawingPoints);
         this.points = line;
-        this.rmse = rmse;
+        this.fidelity = fidelity;
     }
-    getCurveParameters() {
+    getShapeParameters() {
         let x = (this.points[0].x + this.points[1].x) / 2;
         let y = (this.points[0].y + this.points[1].y) / 2;
         let dx = (this.points[1].x - this.points[0].x);
@@ -192,28 +196,34 @@ class CurveSimpleLine {
         let slope = dy / dx;
         let angle = degrees(atan(-1 / slope));
         let length = dist(this.points[0].x, this.points[0].y, this.points[1].x, this.points[1].y);
-        return { centerPosition: { x: x, y: y }, length: length, angle: angle };
+        return { centerPosition: { x: x, y: y }, size: length, orientation: angle };
     }
     getSimilarityScores(curve, canvas) {
-        let parameters1 = this.getCurveParameters();
-        let parameters2 = curve.getCurveParameters();
-        let distance = dist(parameters1.centerPosition.x, parameters1.centerPosition.y, parameters2.centerPosition.x, parameters2.centerPosition.y);
-        let angleDifference = abs(parameters1.angle - parameters2.angle);
-        let lengthDifference = abs(parameters1.length - parameters2.length);
-        // console.log("distance: " + distance + ", angleDifference: " + angleDifference + ", lengthDifference: " + lengthDifference, ", rmse: " + curve.rmse);
-
-        let decimals = 1;
-        let locationScore = round(10 * Math.exp(-distance * distance / (canvas.width * canvas.width / 300)), decimals);
-        let angleScore = round(10 * Math.exp(-angleDifference * angleDifference / (10 * 10)), decimals);
-        let lengthScore = round(10 * Math.exp(-lengthDifference * lengthDifference / (parameters1.length * parameters1.length / 30)), decimals);
-        let smoothnessScore = round(10 * Math.exp(-curve.rmse / (parameters1.length / 40)), decimals);
-        let sumOfWeights = scoreWeights.location + scoreWeights.length + scoreWeights.angle + scoreWeights.smoothness;
-        let overallScore = round((locationScore * scoreWeights.location
-            + lengthScore * scoreWeights.length
-            + angleScore * scoreWeights.angle
-            + smoothnessScore * scoreWeights.smoothness) / sumOfWeights, decimals, decimals);
-        return { overall: overallScore, location: locationScore, angle: angleScore, length: lengthScore, smoothness: smoothnessScore };
+        return getSimilarityScores(this, curve, canvas);
     }
+}
+
+function getSimilarityScores(refShape, fitShape, canvas) {
+    // log the shape type via the class name
+    let shapeType = refShape.constructor.name;
+    let sss = similarityScoreSensitivities[shapeType];
+    let refParams = refShape.getShapeParameters();
+    let fitParams = fitShape.getShapeParameters();
+    let distance = dist(refParams.centerPosition.x, refParams.centerPosition.y, fitParams.centerPosition.x, fitParams.centerPosition.y);
+    let orientationDifference = abs(refParams.orientation - fitParams.orientation);
+    let sizeDifference = abs(refParams.size - fitParams.size);
+
+    let decimals = 1;
+    let locationScore = round(10 * Math.exp(-distance * distance / (canvas.width * canvas.width / sss.location )), decimals);
+    let orientationScore = round(10 * Math.exp(-orientationDifference * orientationDifference / sss.orientation), decimals);
+    let sizeScore = round(10 * Math.exp(-sizeDifference * sizeDifference / (refParams.size * refParams.size / sss.size)), decimals);
+    let fidelity = round(10*fitShape.fidelity, decimals);
+    let sumOfWeights = similarityScoreWeights.location + similarityScoreWeights.size + similarityScoreWeights.orientation + similarityScoreWeights.fidelity;
+    let overallScore = round((locationScore * similarityScoreWeights.location
+        + sizeScore * similarityScoreWeights.size
+        + orientationScore * similarityScoreWeights.orientation
+        + fidelity * similarityScoreWeights.fidelity) / sumOfWeights, decimals, decimals);
+    return { overall: overallScore, location: locationScore, orientation: orientationScore, size: sizeScore, fidelity: fidelity };
 }
 
 function checkShapeFitsInCanvas(centerPosition, meanRadius, canvas, padding = 35) {
@@ -240,51 +250,6 @@ function normalizePoints(points) {
     return { normalizedPoints, centroid };
 }
 
-// function normalizePoints(points) {
-//     let sumX = 0, sumY = 0;
-//     for (const point of points) {
-//         sumX += point.x;
-//         sumY += point.y;
-//     }
-
-//     const initialCentroid = createVector(sumX / points.length, sumY / points.length);
-//     const normalizedPoints = points.map(p => p5.Vector.sub(p, initialCentroid));
-
-//     sumX = 0;
-//     sumY = 0;
-//     for (const point of normalizedPoints) {
-//         sumX += point.x;
-//         sumY += point.y;
-//     }
-
-//     const finalCentroid = createVector(sumX / normalizedPoints.length, sumY / normalizedPoints.length);
-//     const adjustedNormalizedPoints = normalizedPoints.map(p => p5.Vector.sub(p, finalCentroid));
-
-//     return { normalizedPoints: adjustedNormalizedPoints, centroid: p5.Vector.add(initialCentroid, finalCentroid) };
-// }
-
-// function covarianceMatrix(points) {
-//     let xx = 0, xy = 0, yy = 0;
-//     for (const point of points) {
-//         xx += point.x * point.x;
-//         xy += point.x * point.y;
-//         yy += point.y * point.y;
-//     }
-//     const n = points.length;
-//     return { xx: xx / n, xy: xy / n, yy: yy / n };
-// }
-
-// function covarianceMatrix(points) {
-//     let xx = 0, xy = 0, yy = 0;
-//     for (const point of points) {
-//         xx += point.x * point.x;
-//         xy += point.x * point.y;
-//         yy += point.y * point.y;
-//     }
-//     const n = points.length;
-//     return { xx: xx / (n - 1), xy: xy / (n - 1), yy: yy / (n - 1) };
-// }
-
 function covarianceMatrix(points) {
     const n = points.length;
     let sumX = 0, sumY = 0;
@@ -308,54 +273,6 @@ function covarianceMatrix(points) {
 
     return { xx: xx / (n - 1), xy: xy / (n - 1), yy: yy / (n - 1) };
 }
-
-// function solveEigenvalueProblem(matrix) {
-//     const trace = matrix.xx + matrix.yy;
-//     const det = matrix.xx * matrix.yy - matrix.xy * matrix.xy;
-//     const eigenvalue1 = 0.5 * (trace + Math.sqrt(trace * trace - 4 * det));
-//     const eigenvalue2 = 0.5 * (trace - Math.sqrt(trace * trace - 4 * det));
-
-//     const eigenvector1 = createVector(matrix.xy, eigenvalue1 - matrix.xx).normalize();
-//     const eigenvector2 = createVector(matrix.xy, eigenvalue2 - matrix.xx).normalize();
-
-//     return {
-//         eigenvalue1,
-//         eigenvalue2,
-//         eigenvector1,
-//         eigenvector2
-//     };
-// }
-
-// function solveEigenvalueProblem(matrix) {
-//     const trace = matrix.xx + matrix.yy;
-//     const det = matrix.xx * matrix.yy - matrix.xy * matrix.xy;
-//     const eigenvalue1 = 0.5 * (trace + Math.sqrt(trace * trace - 4 * det));
-//     const eigenvalue2 = 0.5 * (trace - Math.sqrt(trace * trace - 4 * det));
-
-//     const eigenvector1 = createVector(matrix.xy, eigenvalue1 - matrix.xx).normalize();
-//     const eigenvector2 = createVector(matrix.xy, eigenvalue2 - matrix.xx).normalize();
-
-//     let majorEigenvalue, minorEigenvalue, majorEigenvector, minorEigenvector;
-
-//     if (eigenvalue1 > eigenvalue2) {
-//       majorEigenvalue = eigenvalue1;
-//       minorEigenvalue = eigenvalue2;
-//       majorEigenvector = eigenvector1;
-//       minorEigenvector = eigenvector2;
-//     } else {
-//       majorEigenvalue = eigenvalue2;
-//       minorEigenvalue = eigenvalue1;
-//       majorEigenvector = eigenvector2;
-//       minorEigenvector = eigenvector1;
-//     }
-
-//     return {
-//       majorEigenvalue,
-//       minorEigenvalue,
-//       majorEigenvector,
-//       minorEigenvector
-//     };
-//   }
 
 function solveEigenvalueProblem(matrix) {
     const A = [
@@ -393,23 +310,6 @@ function solveEigenvalueProblem(matrix) {
         minorEigenvector
     };
 }
-
-// function bestFitEllipse(points) {
-//     const { normalizedPoints, centroid } = normalizePoints(points);
-//     const matrix = covarianceMatrix(normalizedPoints);
-//     const { eigenvalue1, eigenvalue2, eigenvector1, eigenvector2 } = solveEigenvalueProblem(matrix);
-
-//     const a = Math.sqrt(2 * eigenvalue1);
-//     const b = Math.sqrt(2 * eigenvalue2);
-//     const angle = Math.atan2(eigenvector1.y, eigenvector1.x);
-
-//     return {
-//         center: centroid,
-//         width: a * 2,
-//         height: b * 2,
-//         angle: angle
-//     };
-// }
 
 function bestFitEllipse(points) {
     const { normalizedPoints, centroid } = normalizePoints(points);
@@ -458,8 +358,7 @@ function computeRSquared(points, ellipse) {
       const distanceToEllipse = Math.abs(ellipseEquation - 1) * Math.sqrt((width * width + height * height) / 4);
       sumOfSquaredResiduals += distanceToEllipse * distanceToEllipse;
     }
-  
-    return 1 - sumOfSquaredResiduals / totalSumOfSquares;
+    return Math.exp(-(sumOfSquaredResiduals / totalSumOfSquares)/0.2);
   }
 
 class ShapeEllipse {
@@ -469,6 +368,7 @@ class ShapeEllipse {
         this.height = height;
         this.rotationAngle = rotationAngle;
         this.meanRadius = sqrt(width * height / 4); // there are other equally valid ways to calculate this
+        this.fidelity = null;
     }
     resetWithRandomParams(canvas) {
         let x = 0, y = 0, w, h;
@@ -488,7 +388,7 @@ class ShapeEllipse {
         this.width = w;
         this.height = h;
         this.rotationAngle = random(0, TWO_PI);
-        this.meanRadius = sqrt(width * height / 4)
+        this.meanRadius = sqrt(this.width * this.height / 4)
     }
     updateWithFitToDrawing(drawingPoints) {
         let ellipse = bestFitEllipse(drawingPoints);
@@ -496,7 +396,8 @@ class ShapeEllipse {
         this.width = ellipse.width;
         this.height = ellipse.height;
         this.rotationAngle = ellipse.angle;
-        this.meanRadius = sqrt(width * height / 4)
+        this.meanRadius = sqrt(this.width * this.height / 4)
+        this.fidelity = computeRSquared(drawingPoints, ellipse);
     }
     draw(canvas, style = "normal") {
         let c = color(styleParameters[style].lineColor);
@@ -510,8 +411,16 @@ class ShapeEllipse {
         canvas.ellipse(0, 0, this.width, this.height);
         canvas.pop();
     }
-
-
+    getShapeParameters() {
+        return {
+            centerPosition: this.centerPosition,
+            size: this.meanRadius,
+            orientation: degrees(this.rotationAngle)
+        }
+    }
+    getSimilarityScores(shape, canvas) {
+        return getSimilarityScores(this, shape, canvas);
+    }
 }
 
 
