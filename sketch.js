@@ -15,7 +15,7 @@ const similarityScoreLabels = {
   location: "Location",
   length: "Length",
   angle: "Orientation",
-  smoothness: "Smoothness",
+  smoothness: "Fidelity",
   overall: "Overall"
 };
 
@@ -29,6 +29,7 @@ let nextButton;
 
 let reference;
 let showReference = false;
+let referenceShapeType = "Oval";
 let fitToDrawing;
 let showFitToDrawing = false;
 let drawingPoints = [];
@@ -43,7 +44,7 @@ function createBlobs() {
   let blobs = [];
   // create a bunch of blobs to draw on the canvas
   for (let i = 0; i < 9; i++) {
-    blobs.push(new BlobShape(i+1, canvasWidth, numBaseVertices, noiseScale));
+    blobs.push(new ShapeRandomBlob(i+1, canvasWidth, numBaseVertices, noiseScale));
   }
   // randomly remove some blobs
   for (let i = 0; i < 5; i++) {
@@ -68,15 +69,33 @@ function createBlobs() {
     let row = unOccupiedRows[0];
     let column = floor(random(3));
     let canvasSector = row * 3 + column + 1;
-    blobs.push(new BlobShape(canvasSector, canvasWidth, numBaseVertices, noiseScale));
+    blobs.push(new ShapeRandomBlob(canvasSector, canvasWidth, numBaseVertices, noiseScale));
   }
   if (unOccupiedColumns.length > 0) {
     let column = unOccupiedColumns[0];
     let row = floor(random(3));
     let canvasSector = row * 3 + column + 1;
-    blobs.push(new BlobShape(canvasSector, canvasWidth, numBaseVertices, noiseScale));
+    blobs.push(new ShapeRandomBlob(canvasSector, canvasWidth, numBaseVertices, noiseScale));
   }
   return blobs;
+}
+
+function createNewShape(shapeType, canvas) {
+  let shape;
+  if (shapeType === "Line") {
+    shape = new CurveSimpleLine();
+  } else if (shapeType === "Oval") {
+    shape = new ShapeEllipse();
+  }
+  shape.resetWithRandomParams(canvas);
+  return shape;
+}
+
+function resetCanvas() {
+  canvasL.reset();
+  canvasL.background(255);
+  canvasR.reset();
+  canvasR.background(255);
 }
 
 function setup() {
@@ -121,11 +140,26 @@ function setup() {
   canvasL = createGraphics(canvasWidth, canvasHeight);
   canvasR = createGraphics(canvasWidth, canvasHeight);
 
+  reference = createNewShape(referenceShapeType, canvasL);
+  fitToDrawing = createNewShape(referenceShapeType, canvasL);
+
+  blobs = createBlobs();
+
   nextButton = createButton('Next');
-  nextButton.size(80, 40);
+  nextButton.size(100, 40);
   nextButton.mousePressed(nextButtonPressed);
   nextButton.position(canvasWidth + 10, canvasHeight + canvasOffset + 10);
 
+  // add a dropdown menu to select the reference shape type
+  let dropdown = createSelect();
+  dropdown.option('Line');
+  dropdown.option('Oval');
+  dropdown.changed(dropdownChanged);
+  dropdown.value(referenceShapeType);
+  dropdown.position(canvasWidth + 120, canvasHeight + canvasOffset + 10);
+  dropdown.size(100, 40);
+  // dropdown.style('font-size', '20px');
+  
   // add toggle to show grid lines
   let label = createElement(
     'label',
@@ -135,14 +169,8 @@ function setup() {
   label.addClass('switch');
   checkbox = select('#toggle');
   checkbox.checked(showGridLines);
-  label.position(canvasWidth + 115, canvasHeight + canvasOffset + 13);
+  label.position(canvasWidth + 230, canvasHeight + canvasOffset + 13);
   checkbox.changed(toggleGridLines);
-
-  reference = new CurveSimpleLine();
-  reference.updateWithRandomCurve(canvasL);
-  fitToDrawing = new CurveSimpleLine();
-
-  blobs = createBlobs();
 
   // add toggle to show blobs
   let label2 = createElement(
@@ -153,8 +181,22 @@ function setup() {
   label2.addClass('switch');
   checkbox2 = select('#toggle2');
   checkbox2.checked(showBlobs);
-  label2.position(canvasWidth + 195, canvasHeight + canvasOffset + 13);
+  label2.position(canvasWidth + 300, canvasHeight + canvasOffset + 13);
   checkbox2.changed(toggleBlobs);
+}
+
+function dropdownChanged() {
+  resetCanvas();
+  resetScoreDiv();
+  showReference = false;
+  showFitToDrawing = false;
+  drawingPoints = [];
+
+  referenceShapeType = this.value();
+  reference = createNewShape(referenceShapeType, canvasL);
+  fitToDrawing = createNewShape(referenceShapeType, canvasL);
+
+  draw();
 }
 
 function toggleBlobs() {
@@ -168,14 +210,10 @@ function toggleGridLines() {
 }
 
 function nextButtonPressed() {
-  // first clear each canvas
-  canvasL.reset();
-  canvasL.background(255);
-  canvasR.reset();
-  canvasR.background(255);
+  resetCanvas();
   resetScoreDiv();
 
-  reference.updateWithRandomCurve(canvasL);
+  reference.resetWithRandomParams(canvasL);
   showReference = false;
   showFitToDrawing = false;
   drawingPoints = [];
@@ -214,9 +252,15 @@ function mousePressed() {
   }
 }
 
-function mouseDragged() {
+function mouseDragged(event) {
+  // console.log(event);
+  let mouseButtonPressed = true;
+  // check if event class is MouseEvent
+  if (event.constructor.name === 'MouseEvent') {
+    mouseButtonPressed = event.buttons === 1;
+  }
   // only do something if mouse is within the canvas
-  if (mouseY < canvasHeight) {
+  if (mouseY < canvasHeight && mouseButtonPressed) {
     // Add a new point to the line
     drawingPoints.push(createVector(mouseX - canvasWidth, mouseY));
   }
@@ -228,7 +272,9 @@ function mouseReleased() {
 
     fitToDrawing.updateWithFitToDrawing(drawingPoints);
 
-    if (drawingPoints.length <= 3 || isNaN(fitToDrawing.getCurveParameters().length)) {
+    // you need to generalize getCurveParameters to work for ovals too
+    // if (drawingPoints.length <= 3 || isNaN(fitToDrawing.getCurveParameters().length)) {
+    if (drawingPoints.length <= 3) {
       drawingPoints = [];
       canvasR.reset();
       canvasR.background(255);
@@ -237,9 +283,10 @@ function mouseReleased() {
     }
 
     showReference = true;
-    showFitToDrawing = false;
-    let similarityScores = reference.getSimilarityScores(fitToDrawing, canvasL);
-    displayScores(similarityScores);
+    showFitToDrawing = true;
+    // commenting out until this is generalized to work for ovals
+    // let similarityScores = reference.getSimilarityScores(fitToDrawing, canvasL);
+    // displayScores(similarityScores);
   }
 }
 
@@ -309,15 +356,15 @@ function drawStudentCanvas(canvas, ref, fit) {
 
   drawGridLines(canvas);
 
-  // Draw the fit line
-  // if (showFitToDrawing) {
-  //   fit.draw(canvas, "fit");
-  // }
-
   if (showBlobs) {
     for (let i = 0; i < blobs.length; i++) {
       blobs[i].draw(canvas);
     }
+  }
+
+  // Draw the fit line
+  if (showFitToDrawing) {
+    fit.draw(canvas, "fit");
   }
 
   // Draw the student's drawing
