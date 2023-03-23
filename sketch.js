@@ -387,6 +387,13 @@ function drawStudentCanvas(canvas, ref, fit) {
   }
   canvas.endShape();
 
+  // let resampledPoints = ramerDouglasPeucker(drawingPoints, 1);
+  // for (let i = 0; i < resampledPoints.length; i++) {
+  //   canvas.noStroke();
+  //   canvas.fill(255, 0, 0);
+  //   canvas.ellipse(resampledPoints[i].x, resampledPoints[i].y, 4, 4);
+  // }
+
   // Draw the current point
   canvas.fill(200);
   canvas.noStroke();

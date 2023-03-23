@@ -322,6 +322,53 @@ function solveEigenvalueProblem(matrix) {
     };
 }
 
+function distanceToSegmentSquared(point, start, end) {
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const lengthSquared = dx * dx + dy * dy;
+  
+    if (lengthSquared === 0) {
+      return Math.pow(point.dist(start), 2);
+    }
+  
+    const t = ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared;
+    const clampedT = Math.max(0, Math.min(1, t));
+  
+    return Math.pow(point.dist(createVector(start.x + clampedT * dx, start.y + clampedT * dy)), 2);
+  }
+  
+  
+  function ramerDouglasPeucker(points, epsilon) {
+    if (points.length <= 2) {
+      return points;
+    }
+  
+    let maxDistanceSquared = 0;
+    let index = 0;
+  
+    const first = points[0];
+    const last = points[points.length - 1];
+  
+    for (let i = 1; i < points.length - 1; i++) {
+      const distanceSquared = distanceToSegmentSquared(points[i], first, last);
+  
+      if (distanceSquared > maxDistanceSquared) {
+        maxDistanceSquared = distanceSquared;
+        index = i;
+      }
+    }
+  
+    if (maxDistanceSquared > epsilon * epsilon) {
+      const left = ramerDouglasPeucker(points.slice(0, index + 1), epsilon);
+      const right = ramerDouglasPeucker(points.slice(index), epsilon);
+  
+      return left.slice(0, left.length - 1).concat(right);
+    }
+  
+    return [first, last];
+  }
+  
+
 function bestFitEllipse(points) {
     let { normalizedPoints, centroid } = normalizePoints(points);
     let matrix = covarianceMatrix(normalizedPoints);
@@ -411,13 +458,14 @@ class ShapeEllipse {
         this.meanRadius = sqrt(this.width * this.height / 4)
     }
     updateWithFitToDrawing(drawingPoints) {
-        let ellipse = bestFitEllipse(drawingPoints);
+        let resampledPoints = ramerDouglasPeucker(drawingPoints, 1);
+        let ellipse = bestFitEllipse(resampledPoints);
         this.centerPosition = { x: ellipse.center.x, y: ellipse.center.y };
         this.width = ellipse.width;
         this.height = ellipse.height;
         this.rotationAngle = ellipse.angle;
         this.meanRadius = sqrt(this.width * this.height / 4)
-        this.fidelity = computeRSquared(drawingPoints, ellipse);
+        this.fidelity = computeRSquared(resampledPoints, ellipse);
     }
     draw(canvas, style = "normal") {
         let c = color(styleParameters[style].lineColor);
