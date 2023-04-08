@@ -1,8 +1,8 @@
 const canvaseBorderWidth = 2;
 const canvaseBorderOffset = 2;
 const headerHeight = 60;
-const canvasLabelHeight = 40;
-const canvasOffset = headerHeight + canvasLabelHeight;
+const scoreRowHeight = 70;
+const canvasOffset = headerHeight + scoreRowHeight;
 
 const similarityScoreKeys = [
   "location",
@@ -18,6 +18,24 @@ const similarityScoreLabels = {
   fidelity: "Fidelity",
   overall: "Overall"
 };
+let selectedScoreHistory = 'overall';
+let scoreHistories = {
+  'Oval': {
+    'location': [],
+    'size': [],
+    'orientation': [],
+    'fidelity': [],
+    'overall': []
+  },
+  'Line': {
+    'location': [],
+    'size': [],
+    'orientation': [],
+    'fidelity': [],
+    'overall': []
+  }
+}
+let currentScores = {};
 
 let rootCanvas;
 let canvasWidth;
@@ -29,11 +47,11 @@ let nextButton;
 
 let reference;
 let showReference = false;
-let referenceShapeType = "Oval";
+let referenceShapeType = "Line";
 let fitToDrawing;
 let showFitToDrawing = false;
 let drawingPoints = [];
-let showGridLines = true;
+let showGridLines = false;
 let showBlobs = true;
 
 let blobs = [];
@@ -101,10 +119,10 @@ function resetCanvas() {
 function setup() {
   colorMode(RGB, 255, 255, 255, 255);
   let size;
-  if(windowWidth/2 < windowHeight - headerHeight - canvasLabelHeight - 50) {
+  if(windowWidth/2 < windowHeight - headerHeight - scoreRowHeight - 50) {
     size = windowWidth / 2;
   } else {
-    size = windowHeight - headerHeight - canvasLabelHeight - 50;
+    size = windowHeight - headerHeight - scoreRowHeight - 50;
   }  
   canvasWidth = size;
   canvasHeight = size;
@@ -132,29 +150,11 @@ function setup() {
   let titleH1 = createElement('h1', 'Drawing Dojo');
   titleH1.parent(title);
 
-  // create a div to hold canvas labels
-  // then within that create two divs, one for each canvas label
-  // within each of those an h2 for the label text
-  let canvasLabels = createDiv();
-  canvasLabels.addClass('canvas-labels');
-  canvasLabels.position(0, headerHeight);
-  canvasLabels.style('height', canvasLabelHeight + 'px');
-  canvasLabels.style('line-height', canvasLabelHeight + 'px');
-  let canvasLabelL = createDiv();
-  canvasLabelL.addClass('canvas-label');
-  canvasLabelL.parent(canvasLabels);
-  let canvasLabelLH2 = createElement('h2', 'REFERENCE');
-  canvasLabelLH2.parent(canvasLabelL);
-  let canvasLabelR = createDiv();
-  canvasLabelR.addClass('canvas-label');
-  canvasLabelR.parent(canvasLabels);
-  let canvasLabelRH2 = createElement('h2', 'DRAWING');
-  canvasLabelRH2.parent(canvasLabelR);
-
+  let buttonXOffset = 10; // canvasWidth
   nextButton = createButton('Next');
   nextButton.size(100, 40);
   nextButton.mousePressed(nextButtonPressed);
-  nextButton.position(canvasWidth + 10, canvasHeight + canvasOffset + 10);
+  nextButton.position(canvasWidth - 110, canvasHeight + canvasOffset + 10);
 
   // add a dropdown menu to select the reference shape type
   let dropdown = createSelect();
@@ -162,7 +162,7 @@ function setup() {
   dropdown.option('Oval');
   dropdown.changed(dropdownChanged);
   dropdown.value(referenceShapeType);
-  dropdown.position(canvasWidth + 120, canvasHeight + canvasOffset + 10);
+  dropdown.position(buttonXOffset, canvasHeight + canvasOffset + 10);
   dropdown.size(100, 40);
   // dropdown.style('font-size', '20px');
   
@@ -175,7 +175,7 @@ function setup() {
   label.addClass('switch');
   checkbox = select('#toggle');
   checkbox.checked(showGridLines);
-  label.position(canvasWidth + 230, canvasHeight + canvasOffset + 13);
+  label.position(buttonXOffset + 110, canvasHeight + canvasOffset + 13);
   checkbox.changed(toggleGridLines);
 
   // add toggle to show blobs
@@ -187,8 +187,17 @@ function setup() {
   label2.addClass('switch');
   checkbox2 = select('#toggle2');
   checkbox2.checked(showBlobs);
-  label2.position(canvasWidth + 300, canvasHeight + canvasOffset + 13);
+  label2.position(buttonXOffset + 180, canvasHeight + canvasOffset + 13);
   checkbox2.changed(toggleBlobs);
+
+  let similarityScores = {
+    overall: '-',
+    location: '-',
+    orientation: '-',
+    size: '-',
+    fidelity: '-'
+  };
+  displayScores(similarityScores);
 }
 
 function dropdownChanged() {
@@ -201,6 +210,8 @@ function dropdownChanged() {
   referenceShapeType = this.value();
   reference = createNewShape(referenceShapeType, canvasL);
   fitToDrawing = createNewShape(referenceShapeType, canvasL);
+
+  displayHistory(scoreHistories[referenceShapeType][selectedScoreHistory]);
 
   draw();
 }
@@ -215,7 +226,17 @@ function toggleGridLines() {
   draw();
 }
 
+function updateScoreHistory() {
+  scoreHistories[referenceShapeType].location.push(currentScores.location);
+  scoreHistories[referenceShapeType].orientation.push(currentScores.orientation);
+  scoreHistories[referenceShapeType].size.push(currentScores.size);
+  scoreHistories[referenceShapeType].fidelity.push(currentScores.fidelity);
+  scoreHistories[referenceShapeType].overall.push(currentScores.overall);
+}
+
 function nextButtonPressed() {
+  updateScoreHistory();
+  
   resetCanvas();
   resetScoreDiv();
 
@@ -223,11 +244,13 @@ function nextButtonPressed() {
   showReference = false;
   showFitToDrawing = false;
   drawingPoints = [];
+
+  displayHistory(scoreHistories[referenceShapeType][selectedScoreHistory]);
 }
 
 function windowResized() {
   let size;
-  if(windowWidth/2 < windowHeight - headerHeight - canvasLabelHeight - 50) {
+  if(windowWidth/2 < windowHeight - headerHeight - scoreRowHeight - 50) {
     size = windowWidth / 2;
   } else {
     size = windowHeight;
@@ -241,7 +264,7 @@ function touchStarted(event) {
   // console.log(event);
 
   // only do something if mouse is within the canvas
-  if (mouseY < canvasHeight) {
+  if (mouseY < canvasHeight && mouseX > canvasWidth) {
     showReference = false;
     showFitToDrawing = false;
 
@@ -253,7 +276,7 @@ function touchStarted(event) {
 
 function mousePressed() {
   // only do something if mouse is within the canvas
-  if (mouseY < canvasHeight) {
+  if (mouseY < canvasHeight && mouseX > canvasWidth) {
 
     showReference = false;
     showFitToDrawing = false;
@@ -272,7 +295,7 @@ function mouseDragged(event) {
     mouseButtonPressed = event.buttons === 1;
   }
   // only do something if mouse is within the canvas
-  if (mouseY < canvasHeight && mouseButtonPressed) {
+  if (mouseY < canvasHeight && mouseButtonPressed && mouseX > canvasWidth) {
     // Add a new point to the line
     drawingPoints.push(createVector(mouseX - canvasWidth, mouseY));
   }
@@ -280,7 +303,7 @@ function mouseDragged(event) {
 
 function mouseReleased() {
   // only do something if mouse is within the canvas
-  if (mouseY < canvasHeight) {
+  if (mouseY < canvasHeight && mouseX > canvasWidth) {
 
     fitToDrawing.updateWithFitToDrawing(drawingPoints);
 
@@ -295,6 +318,7 @@ function mouseReleased() {
     showReference = true;
     showFitToDrawing = true;
     let similarityScores = reference.getSimilarityScores(fitToDrawing, canvasL);
+    currentScores = similarityScores;
     displayScores(similarityScores);
   }
 }
@@ -304,33 +328,141 @@ function resetScoreDiv() {
   if (scoreDiv) {
     scoreDiv.remove();
   }
+  let similarityScores = {
+    overall: '-',
+    location: '-',
+    orientation: '-',
+    size: '-',
+    fidelity: '-'
+  };
+  displayScores(similarityScores);    
+}
+
+// 720007,952816,b95025,dc7934,ffa143,e5af4a,ccbd52,
+// b2cb59,98d960,84c655,
+// 70b24a,5d9f3e,498c33
+
+function colorForScorePanel(score) {
+  if (score === '-') {
+    return '#ddd';
+  } else if (score < 6) {
+    return '#952816'; // 0 to 6
+  } else if (score < 7) {
+    return '#dc7934'; // 6 to 7
+  } else if (score < 8) {
+    return '#e9c864'; // 7 to 8
+  } else if (score < 9) {
+    return '#b3d361'; // 8 to 9
+  } else {
+    return '#63a642'; // 9 to 10
+  }
+}
+function colorForScoreLabel(score) {
+  if (score === '-') {
+    return '#888';
+  } else if (score < 6) {
+    return 'white'; // 0 to 6
+  } else if (score < 7) {
+    return 'white'; // 6 to 7
+  } else if (score < 8) {
+    return 'white'; // 7 to 8
+  } else if (score < 9) {
+    return 'white'; // 8 to 9
+  } else {
+    return 'white'; // 9 to 10
+  }
+}
+
+function scoreCardClicked(event, scoreType) {
+  selectedScoreHistory = scoreType;
+  displayHistory(scoreHistories[referenceShapeType][selectedScoreHistory]);
 }
 
 function displayScores(scores) {
-  resetScoreDiv();
+  let scoreDiv = select("#scoreDiv");
+  if (scoreDiv) {
+    scoreDiv.remove();
+  }
   scoreDiv = createDiv();
-  scoreDiv.position(10, canvasHeight + canvasOffset + 20);
+  scoreDiv.position(canvasWidth + 2, headerHeight);
   scoreDiv.id("scoreDiv");
   scoreDiv.style("display", "flex");
-  scoreDiv.style("flex-direction", "row");
-  scoreDiv.style("column-gap", ".1em");
-  scoreDiv.style("font-size", "1em");
-  scoreDiv.style("justify-content", "space-between");
+  scoreDiv.style("flex-wrap", "wrap");
+  // scoreDiv.style("justify-content", "center");
+  scoreDiv.style("justify-content", "space-around");
   scoreDiv.style("width", windowWidth / 2 - 20 + "px");
+  scoreDiv.style("gap", "10px");
+  
   for (let key of similarityScoreKeys) {
-    // display the label and score in their own divs so they can be styled separately
-    let div = createDiv(similarityScoreLabels[key]);
-    div.style("color", "#888");
-    scoreDiv.child(div);
-    div = createDiv(scores[key]);
-    div.style("font-weight", "bold");
-    scoreDiv.child(div);
-    // add a separator
-    if (key != similarityScoreKeys[similarityScoreKeys.length - 1]) {
-      scoreDiv.child(createDiv("|"));
+    let score = scores[key];
+    let scoreContainer = createDiv();
+    scoreContainer.mousePressed((event) => scoreCardClicked(event, key));
+    scoreContainer.style("display", "flex");
+    scoreContainer.style("flex-direction", "column");
+    scoreContainer.style("align-items", "center");
+    scoreContainer.style("background-color", colorForScorePanel(score));
+    scoreContainer.style("border-radius", "5px");
+    scoreContainer.style("padding", "10px");
+    scoreContainer.style("box-shadow", "0 2px 4px rgba(0, 0, 0, 0.1)");
+    scoreContainer.style("max-height", (scoreRowHeight-5) + "px");
+    scoreContainer.style("min-width", "100px");
+    if(key === selectedScoreHistory) {
+      scoreContainer.style("border", "3px solid #555");
     }
+
+    let labelDiv = createDiv(similarityScoreLabels[key]);
+    labelDiv.style("color", colorForScoreLabel(score));
+    labelDiv.style("margin-bottom", "5px");
+    scoreContainer.child(labelDiv);
+
+    let valueDiv = createDiv(scores[key]);
+    valueDiv.style("color", colorForScoreLabel(score));
+    valueDiv.style("font-size", "1.5em");
+    valueDiv.style("font-weight", "bold");
+    scoreContainer.child(valueDiv);
+
+    scoreDiv.child(scoreContainer);
+  }
+
+}
+
+function displayHistory(history) {
+  const chartWidth = windowWidth / 2 - 20;
+  const chartHeight = (scoreRowHeight-5);
+  const barSpacing = 2;
+  const barWidth = min(20, chartWidth / history.length - barSpacing);
+
+  let historyDiv = select("#historyDiv");
+  if (historyDiv) {
+    historyDiv.remove();
+  }
+
+  historyDiv = createDiv();
+  historyDiv.id("historyDiv");
+  historyDiv.style("position", "absolute");
+  historyDiv.style("left", "10px");
+  historyDiv.style("top", headerHeight + "px");
+  historyDiv.style("width", chartWidth + "px");
+  historyDiv.style("height", chartHeight + "px");
+
+  let historyCanvas = createGraphics(history.length * (barWidth + barSpacing), chartHeight);
+  historyCanvas.parent(historyDiv);
+  historyCanvas.style("position", "relative");
+  historyCanvas.style("display", "block");
+
+  historyCanvas.background(255);
+  for (let i = 0; i < history.length; i++) {
+    let score = history[i];
+    let barHeight = map(score, 0, 10, 0, chartHeight);
+    let color = colorForScorePanel(score);
+    historyCanvas.fill(color);
+    historyCanvas.noStroke();
+    historyCanvas.rect(i * (barWidth + barSpacing), chartHeight - barHeight, barWidth, barHeight);
+    // display the score on the rect as a tooltip
   }
 }
+
+
 
 function drawCanvasBorder(canvas) {
   // draw border around the canvas
@@ -345,7 +477,8 @@ function drawGridLines(canvas) {
     return;
   }
   // light blue lines
-  let c = color("#2196F3");
+  // let c = color("#2196F3");
+  let c = color('#999');
   c.setAlpha(40);
   canvas.stroke(c);
   canvas.strokeWeight(3);

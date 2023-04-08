@@ -7,8 +7,8 @@ const styleParameters = {
     },
     reference: {
         // make line orange
-        lineColor: "#ffc300",
-        lineOpacity: 200,
+        lineColor: "#0097ce",
+        lineOpacity: 120,
         lineThickness: 5,
     },
     fit: {
