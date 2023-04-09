@@ -246,6 +246,8 @@ function nextButtonPressed() {
   drawingPoints = [];
 
   displayHistory(scoreHistories[referenceShapeType][selectedScoreHistory]);
+
+  currentScores = {};
 }
 
 function windowResized() {
@@ -264,7 +266,7 @@ function touchStarted(event) {
   // console.log(event);
 
   // only do something if mouse is within the canvas
-  if (mouseY < canvasHeight && mouseX > canvasWidth) {
+  if (mouseY >= 0 && mouseY < canvasHeight && mouseX > canvasWidth) {
     showReference = false;
     showFitToDrawing = false;
 
@@ -276,7 +278,7 @@ function touchStarted(event) {
 
 function mousePressed() {
   // only do something if mouse is within the canvas
-  if (mouseY < canvasHeight && mouseX > canvasWidth) {
+  if (mouseY >= 0 && mouseY < canvasHeight && mouseX > canvasWidth) {
 
     showReference = false;
     showFitToDrawing = false;
@@ -295,7 +297,7 @@ function mouseDragged(event) {
     mouseButtonPressed = event.buttons === 1;
   }
   // only do something if mouse is within the canvas
-  if (mouseY < canvasHeight && mouseButtonPressed && mouseX > canvasWidth) {
+  if (mouseY >= 0 && mouseY < canvasHeight && mouseButtonPressed && mouseX > canvasWidth) {
     // Add a new point to the line
     drawingPoints.push(createVector(mouseX - canvasWidth, mouseY));
   }
@@ -303,7 +305,7 @@ function mouseDragged(event) {
 
 function mouseReleased() {
   // only do something if mouse is within the canvas
-  if (mouseY < canvasHeight && mouseX > canvasWidth) {
+  if (mouseY >= 0 && mouseY < canvasHeight && mouseX > canvasWidth) {
 
     fitToDrawing.updateWithFitToDrawing(drawingPoints);
 
@@ -338,13 +340,28 @@ function resetScoreDiv() {
   displayScores(similarityScores);    
 }
 
-// 720007,952816,b95025,dc7934,ffa143,e5af4a,ccbd52,
-// b2cb59,98d960,84c655,
-// 70b24a,5d9f3e,498c33
+function adjustColor(hex, amount) {
+  const padHex = (value) => {
+    const hexValue = value.toString(16);
+    return hexValue.length === 1 ? `0${hexValue}` : hexValue;
+  };
+
+  const parseHex = (value) => parseInt(value, 16);
+
+  const r = parseHex(hex.substring(1, 3));
+  const g = parseHex(hex.substring(3, 5));
+  const b = parseHex(hex.substring(5, 7));
+
+  const adjustedR = Math.min(255, Math.max(0, r + amount));
+  const adjustedG = Math.min(255, Math.max(0, g + amount));
+  const adjustedB = Math.min(255, Math.max(0, b + amount));
+
+  return `#${padHex(adjustedR)}${padHex(adjustedG)}${padHex(adjustedB)}`;
+}
 
 function colorForScorePanel(score) {
   if (score === '-') {
-    return '#ddd';
+    return '#dddddd';
   } else if (score < 6) {
     return '#952816'; // 0 to 6
   } else if (score < 7) {
@@ -353,13 +370,15 @@ function colorForScorePanel(score) {
     return '#e9c864'; // 7 to 8
   } else if (score < 9) {
     return '#b3d361'; // 8 to 9
-  } else {
+  } else if (score <= 10) {
     return '#63a642'; // 9 to 10
+  } else {
+    return '#dddddd';
   }
 }
 function colorForScoreLabel(score) {
   if (score === '-') {
-    return '#888';
+    return '#888888';
   } else if (score < 6) {
     return 'white'; // 0 to 6
   } else if (score < 7) {
@@ -368,13 +387,21 @@ function colorForScoreLabel(score) {
     return 'white'; // 7 to 8
   } else if (score < 9) {
     return 'white'; // 8 to 9
-  } else {
+  } else if (score <= 10) {
     return 'white'; // 9 to 10
+  } else {
+    return '#888888';
   }
 }
 
 function scoreCardClicked(event, scoreType) {
+  let scoreContainer = select("#scoreContainer_" + selectedScoreHistory);
+  scoreContainer.style("border", "none");
+
   selectedScoreHistory = scoreType;
+  scoreContainer = select("#scoreContainer_" + selectedScoreHistory);
+  let score = currentScores[scoreType];
+  scoreContainer.style("border", "4px solid" + adjustColor(colorForScorePanel(score), -50));
   displayHistory(scoreHistories[referenceShapeType][selectedScoreHistory]);
 }
 
@@ -392,33 +419,37 @@ function displayScores(scores) {
   scoreDiv.style("justify-content", "space-around");
   scoreDiv.style("width", windowWidth / 2 - 20 + "px");
   scoreDiv.style("gap", "10px");
+  scoreDiv.style("padding", "3px");
   
   for (let key of similarityScoreKeys) {
     let score = scores[key];
     let scoreContainer = createDiv();
+    scoreContainer.id("scoreContainer_" + key);
     scoreContainer.mousePressed((event) => scoreCardClicked(event, key));
+    scoreContainer.touchStarted((event) => scoreCardClicked(event, key));
     scoreContainer.style("display", "flex");
     scoreContainer.style("flex-direction", "column");
     scoreContainer.style("align-items", "center");
     scoreContainer.style("background-color", colorForScorePanel(score));
-    scoreContainer.style("border-radius", "5px");
-    scoreContainer.style("padding", "10px");
+    scoreContainer.style("border-radius", "7px");
+    scoreContainer.style("padding", "3px");
     scoreContainer.style("box-shadow", "0 2px 4px rgba(0, 0, 0, 0.1)");
-    scoreContainer.style("max-height", (scoreRowHeight-5) + "px");
+    scoreContainer.style("max-height", (scoreRowHeight-8) + "px");
     scoreContainer.style("min-width", "100px");
     if(key === selectedScoreHistory) {
-      scoreContainer.style("border", "3px solid #555");
+      scoreContainer.style("border", "4px solid" + adjustColor(colorForScorePanel(score), -50));
     }
 
     let labelDiv = createDiv(similarityScoreLabels[key]);
     labelDiv.style("color", colorForScoreLabel(score));
-    labelDiv.style("margin-bottom", "5px");
+    labelDiv.style("margin-bottom", "1px");
     scoreContainer.child(labelDiv);
 
     let valueDiv = createDiv(scores[key]);
     valueDiv.style("color", colorForScoreLabel(score));
     valueDiv.style("font-size", "1.5em");
     valueDiv.style("font-weight", "bold");
+    labelDiv.style("margin-bottom", "2px");
     scoreContainer.child(valueDiv);
 
     scoreDiv.child(scoreContainer);
